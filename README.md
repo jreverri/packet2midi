@@ -92,5 +92,4 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ---
 
-**Built with 🖤 by Jason Reverri.**
 *"Beep Boop Beep – Auralizing your Network with Python and Synthesizers"*
