@@ -11,78 +11,106 @@ Whether you're a creative coder, a modular synth enthusiast, or a security resea
 ## 🚀 Key Features
 
 - **Real-time Sniffing:** Powered by `Scapy` for high-performance packet capture.
-- **Musical Quantization:** Force raw network data into user-defined musical scales (e.g., C-Minor Pentatonic) to ensure your network always "performs" in key.
-- **Auditory IDS:** A custom mapping engine for security events:
-    - **ICMP Pings:** Low-frequency thuds.
-    - **Nmap/SYN Scans:** High-speed, glitchy arpeggios.
-    - **Honeypot Commands:** Map ASCII characters from attacker input directly to Control Voltage (CV).
-- **Remote Sensing:** Support for piped traffic from remote sensors like the WiFi Pineapple or local USB WiFi interfaces in monitor mode (802.11).
-- **Modular Mapping Profiles:** Easily swap between `industrial.py`, `ambient.py`, or `ids_alerts.py` to change the "voice" of your network.
+- **Dynamic Mapping Profiles:** Load YAML-based profiles to change scales, CC mappings, and protocol behaviors instantly.
+- **Musical Quantization:** Force raw network data into user-defined musical scales (e.g., C-Minor Pentatonic) defined in your profile.
+- **Auditory IDS:** Custom mapping for security events:
+    - **ICMP Pings:** Mapped to low-frequency thuds (Kick Drums).
+    - **TCP/UDP:** Differentiated voices (Leads vs. Sub-bass).
+    - **Payload Entropy:** Map chaotic payload data to "Chaos" CC parameters.
+- **Remote Sensing:** Support for piped traffic from remote sensors or local USB WiFi interfaces in monitor mode (802.11).
 
 ---
 
-## 🛠 Hardware Requirements
+## 🛠 Hardware & Setup Options
 
-To get the most out of `Packet2Midi`, the following setup is recommended:
+### Option 1: The Physical Rack (Hardware)
+- **Brain:** Raspberry Pi 4 or 5 (running Raspberry Pi OS Lite).
+- **Interface:** USB WiFi interface with Monitor Mode support (e.g., Alfa AWUS036ACM).
+- **MIDI-to-CV:** A module to bridge the Pi to your rack (e.g., Expert Sleepers ES-8/9, ALM mmMidi, or Hexinverter Mutant Brain).
+- **Synth:** A physical Eurorack or modular system.
 
-1.  **Brain:** Raspberry Pi 4 or 5 (running Raspberry Pi OS Lite).
-2.  **Interface:** USB WiFi interface with Monitor Mode support (e.g., Alfa AWUS036ACM).
-3.  **MIDI-to-CV:** A module to bridge the Pi to your rack (e.g., Expert Sleepers ES-8/9, ALM mmMidi, or Hexinverter Mutant Brain).
-4.  **Synth:** A modular synthesizer (Eurorack, Buchla, etc.) to provide the "voice."
+### Option 2: The Virtual Rack (VCV Rack)
+If you don't have a physical modular synth, you can use **VCV Rack** (Free/Pro) on your laptop.
+- **Brain:** Raspberry Pi 4 or 5.
+- **Connection:** 
+    - **USB-to-USB MIDI:** Use a standard USB MIDI interface cable to connect the Pi to your computer.
+    - **Virtual MIDI (Network):** Use `rtpMIDI` (Windows) or built-in Network MIDI (macOS) to send MIDI data over your local WiFi/Ethernet from the Pi to VCV Rack.
+- **VCV Rack Setup:** Use the `MIDI-to-CV` module in VCV Rack and select the incoming MIDI port from your Pi.
 
 ---
 
 ## 📥 Installation
 
-### 1. System Dependencies
-On your Raspberry Pi (or Linux machine), install the necessary libraries:
+Follow these steps to get `Packet2Midi` running on your system.
+
+### 1. Clone the Repository
+Open your terminal and clone the project from GitHub:
+
+```bash
+git clone https://github.com/jreverri/packet2midi.git
+cd packet2midi
+```
+
+### 2. Install System Dependencies
+Install the required system libraries and tools:
 
 ```bash
 sudo apt-get update
-sudo apt-get install libportmidi-dev python3-scapy python3-mido python3-rtmidi vim aircrack-ng
+sudo apt-get install libportmidi-dev python3-scapy python3-mido python3-rtmidi python3-yaml vim aircrack-ng
 ```
 
-### 2. Python Environment
-Install the Python requirements:
+### 3. Setup Python Virtual Environment
+Create and activate a virtual environment to manage dependencies safely:
 
 ```bash
-pip install scapy mido python-rtmidi
+# Create the virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# Install requirements
+pip install -r requirements.txt
 ```
+
+*Note: You must run `source venv/bin/activate` every time you open a new terminal to use the tool.*
 
 ---
 
-## 🎹 How it Works: The Mapping Philosophy
+## 🎹 Mapping Profiles
 
-`Packet2Midi` translates the abstract data of a packet into musical parameters:
+`Packet2Midi` uses YAML profiles to define how network data is translated into sound. Profiles are located in the `profiles/` directory.
 
-| Network Data | Musical Parameter | Result |
-| :--- | :--- | :--- |
-| **IP Source/Dest** | MIDI Note / Pitch | Specific hosts have their own "melody". |
-| **Packet Size (MTU)** | Filter Cutoff / Resonance | Larger packets "open up" the sound. |
-| **Protocol (TCP/UDP)** | Gate / Trigger | Rhythmic pulses based on traffic type. |
-| **Entropy** | Modulation / Noise | High-entropy traffic creates chaotic textures. |
-| **802.11 RSSI** | Velocity / Amplitude | Closer devices sound louder and more aggressive. |
+### Current Profiles:
+- **`industrial.yaml`**: Gritty, minor-scale textures with heavy CC modulation for a rhythmic industrial vibe.
+- **`ambient.yaml`**: Soft, Aeolian scales with fixed low velocities and slow filter sweeps.
+- **`ids_alerts.yaml`**: Tense, alert-focused mappings with sub-bass ICMP warnings for monitoring security events.
 
 ---
 
 ## 📖 Usage
 
-### Basic Local Sniffing
+### Basic Usage with a Profile
 ```bash
-sudo python3 packet2midi.py --iface eth0 --profile industrial
+sudo python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml --virtual
 ```
 
 ### Monitor Mode (Sonifying the Air)
 ```bash
 sudo airmon-ng start wlan1
-sudo python3 packet2midi.py --iface wlan1mon --mode monitor
+sudo python3 packet2midi.py --iface wlan1mon --profile profiles/ids_alerts.yaml
+```
+
+### Remote Pipe (WiFi Pineapple)
+```bash
+ssh root@172.16.42.1 'tcpdump -i wlan1 -U -w -' | sudo python3 packet2midi.py --profile profiles/ambient.yaml
 ```
 
 ---
 
 ## 🎨 Creative Intent
 
-`Packet2Midi` was born from the "Hacker Tax"—the idea of contributing creative tools back to the community. It was showcased at **DEF CON Singapore** and **HOPE 26** as a way to explore the aesthetic and diagnostic potential of our digital environments.
+`Packet2Midi` was born from the "Hacker Tax"—the idea of contributing creative tools back to the community. It was showcased at **DEF CON Singapore** and has been submitted for consideration at **HOPE 26** as a way to explore the aesthetic and diagnostic potential of our digital environments.
 
 ---
 

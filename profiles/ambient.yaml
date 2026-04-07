@@ -1,0 +1,18 @@
+name: "Deep Ambient"
+scale: [48, 51, 53, 55, 58, 60, 63, 65, 67, 70, 72] # C-Minor Pentatonic / Aeolian
+mappings:
+  tcp:
+    note_offset: 0
+    velocity_source: "fixed"
+    fixed_velocity: 48 # Low velocity for pads
+    cc:
+      1: "size"       # Mod Wheel -> Slow filter sweep
+      19: "entropy"   # Reverb wetness
+  udp:
+    note_offset: 12   # High octave textures
+    velocity_source: "size"
+    cc:
+      7: "size"       # Volume fades
+  icmp:
+    fixed_note: 72    # High chime (C5)
+    velocity: 32      # Soft trigger

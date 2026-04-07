@@ -1,0 +1,17 @@
+name: "Industrial Glitch"
+scale: [24, 25, 36, 37, 48, 49, 60, 61]
+mappings:
+  tcp:
+    note_offset: 0
+    velocity_source: "size"
+    cc:
+      1: "size"       # Mod Wheel -> MTU
+      20: "entropy"   # Chaos -> Payload Entropy
+  udp:
+    note_offset: -12  # Drop an octave for bass
+    velocity_source: "size"
+    cc:
+      7: "size"       # Volume -> MTU
+  icmp:
+    fixed_note: 36    # Kick drum (Low C)
+    velocity: 127
