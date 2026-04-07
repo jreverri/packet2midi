@@ -51,7 +51,7 @@ Install the required system libraries and tools:
 
 ```bash
 sudo apt-get update
-sudo apt-get install git libportmidi-dev python3-scapy python3-mido python3-rtmidi python3-yaml vim aircrack-ng
+sudo apt-get install git libasound2-dev libjack-jackd2-dev libportmidi-dev libcap2-bin python3-scapy python3-mido python3-rtmidi python3-yaml vim aircrack-ng
 ```
 
 ### 2. Clone the Repository
@@ -63,11 +63,11 @@ cd packet2midi
 ```
 
 ### 3. Setup Python Virtual Environment
-Create and activate a virtual environment to manage dependencies safely:
+Create a virtual environment with **local copies** of the Python binary so you can set permissions on it:
 
 ```bash
-# Create the virtual environment
-python3 -m venv venv
+# Create the virtual environment using --copies
+python3 -m venv --copies venv
 
 # Activate it
 source venv/bin/activate
@@ -82,14 +82,16 @@ pip install -r requirements.txt
 
 ## 🔒 Security & Permissions (Highly Recommended)
 
-By default, sniffing network traffic requires root privileges (`sudo`). However, running a Python script as `root` is a security risk. You can allow your Python virtual environment to sniff traffic without `sudo` by granting it the necessary capabilities:
+By default, sniffing network traffic requires root privileges (`sudo`). However, running a Python script as `root` is a security risk. You can allow your Python virtual environment to sniff traffic without `sudo` by granting it the necessary capabilities. 
+
+**Note:** We use `--copies` in the venv step because `setcap` cannot be applied to symlinks.
 
 ```bash
 # Grant network sniffing capabilities to the Python binary in your venv
 sudo setcap cap_net_raw,cap_net_admin=eip venv/bin/python3
 ```
 
-After running this, you can start the script normally:
+After running this, you can start the script normally without `sudo`:
 `python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml`
 
 ---
@@ -107,20 +109,22 @@ After running this, you can start the script normally:
 
 ## 📖 Usage
 
+*Note: If you have applied the `setcap` permissions as described above, you do NOT need to use `sudo` for these commands.*
+
 ### Basic Usage with a Profile
 ```bash
-sudo python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml --virtual
+python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml --virtual
 ```
 
 ### Monitor Mode (Sonifying the Air)
 ```bash
-sudo airmon-ng start wlan1
-sudo python3 packet2midi.py --iface wlan1mon --profile profiles/ids_alerts.yaml
+sudo airmon-ng start wlan1 # Still requires sudo for hardware mode change
+python3 packet2midi.py --iface wlan1mon --profile profiles/ids_alerts.yaml
 ```
 
 ### Remote Pipe (WiFi Pineapple)
 ```bash
-ssh root@172.16.42.1 'tcpdump -i wlan1 -U -w -' | sudo python3 packet2midi.py --profile profiles/ambient.yaml
+ssh root@172.16.42.1 'tcpdump -i wlan1 -U -w -' | python3 packet2midi.py --profile profiles/ambient.yaml
 ```
 
 ---
