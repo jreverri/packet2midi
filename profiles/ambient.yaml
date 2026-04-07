@@ -1,5 +1,9 @@
 name: "Deep Ambient"
 scale: [48, 51, 53, 55, 58, 60, 63, 65, 67, 70, 72] # C-Minor Pentatonic / Aeolian
+settings:
+  max_mtu: 1500
+  min_interval: 0.1    # Slower, 100ms rate limit for pads
+  note_duration: 0.5   # Longer, 500ms notes for ambient sustain
 mappings:
   tcp:
     note_offset: 0
@@ -16,3 +20,7 @@ mappings:
   icmp:
     fixed_note: 72    # High chime (C5)
     velocity: 32      # Soft trigger
+  default:             # Gentle textural background for other traffic
+    note_offset: 0
+    velocity_source: "fixed"
+    fixed_velocity: 32

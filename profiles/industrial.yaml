@@ -1,5 +1,9 @@
 name: "Industrial Glitch"
 scale: [24, 25, 36, 37, 48, 49, 60, 61]
+settings:
+  max_mtu: 1500        # Standard MTU for scaling velocity/CC
+  min_interval: 0.03   # Fast rate limit (30ms) for glitchy textures
+  note_duration: 0.05  # Short, snappy notes
 mappings:
   tcp:
     note_offset: 0
@@ -15,3 +19,7 @@ mappings:
   icmp:
     fixed_note: 36    # Kick drum (Low C)
     velocity: 127
+  default:             # Catch-all for non-TCP/UDP/ICMP traffic
+    note_offset: 0
+    velocity_source: "fixed"
+    fixed_velocity: 64

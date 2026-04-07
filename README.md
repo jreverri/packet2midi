@@ -46,20 +46,20 @@ If you don't have a physical modular synth, you can use **VCV Rack** (Free/Pro) 
 
 Follow these steps to get `Packet2Midi` running on your system.
 
-### 1. Clone the Repository
+### 1. Install System Dependencies
+Install the required system libraries and tools:
+
+```bash
+sudo apt-get update
+sudo apt-get install git libportmidi-dev python3-scapy python3-mido python3-rtmidi python3-yaml vim aircrack-ng
+```
+
+### 2. Clone the Repository
 Open your terminal and clone the project from GitHub:
 
 ```bash
 git clone https://github.com/jreverri/packet2midi.git
 cd packet2midi
-```
-
-### 2. Install System Dependencies
-Install the required system libraries and tools:
-
-```bash
-sudo apt-get update
-sudo apt-get install libportmidi-dev python3-scapy python3-mido python3-rtmidi python3-yaml vim aircrack-ng
 ```
 
 ### 3. Setup Python Virtual Environment
@@ -77,6 +77,20 @@ pip install -r requirements.txt
 ```
 
 *Note: You must run `source venv/bin/activate` every time you open a new terminal to use the tool.*
+
+---
+
+## 🔒 Security & Permissions (Highly Recommended)
+
+By default, sniffing network traffic requires root privileges (`sudo`). However, running a Python script as `root` is a security risk. You can allow your Python virtual environment to sniff traffic without `sudo` by granting it the necessary capabilities:
+
+```bash
+# Grant network sniffing capabilities to the Python binary in your venv
+sudo setcap cap_net_raw,cap_net_admin=eip venv/bin/python3
+```
+
+After running this, you can start the script normally:
+`python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml`
 
 ---
 

@@ -1,5 +1,9 @@
 name: "Auditory IDS Alerts"
 scale: [48, 51, 60, 63, 72, 75] # C-Minor 7th (Tense)
+settings:
+  max_mtu: 1500
+  min_interval: 0.05   # Standard 50ms rate limit
+  note_duration: 0.1   # Short, 100ms alert blips
 mappings:
   tcp:
     note_offset: 0
@@ -13,6 +17,7 @@ mappings:
   icmp:
     fixed_note: 24    # Sub-Bass Warning
     velocity: 127
-  security_alert:     # Special mapping for high-entropy/scans
-    fixed_note: 84    # High C (Warning siren)
-    velocity: 127
+  default:             # Background network chatter
+    note_offset: 0
+    velocity_source: "fixed"
+    fixed_velocity: 48
