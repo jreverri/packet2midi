@@ -1,5 +1,7 @@
 # Packet2Midi 🎹📡
 
+![Packet2Midi Header](images/packet2midi.png)
+
 **Turn your network telemetry into a Rhythmic Industrial Soundscape.**
 
 `Packet2Midi` is an open-source framework designed for network sonification. It bridges the gap between the digital wire and analog synthesis by converting real-time network traffic (IP headers, packet sizes, protocol types) into MIDI CC and Note data for modular synthesizers.
@@ -32,6 +34,7 @@ Whether you're a creative coder, a modular synth enthusiast, or a security resea
 ### Option 2: The Virtual Rack (VCV Rack)
 If you don't have a physical modular synth, you can use **VCV Rack** (Free/Pro) on your laptop.
 - **Brain:** Raspberry Pi 4 or 5.
+- **Interface:** USB WiFi interface with Monitor Mode support (e.g., Alfa AWUS036ACM).
 - **Connection:** 
     - **USB-to-USB MIDI:** Use a standard USB MIDI interface cable to connect the Pi to your computer.
     - **Virtual MIDI (Network):** Use `rtpMIDI` (Windows) or built-in Network MIDI (macOS) to send MIDI data over your local WiFi/Ethernet from the Pi to VCV Rack.
