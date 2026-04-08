@@ -69,9 +69,10 @@ class MidiEngine:
 
 class PacketProcessor:
     """The brain: Maps network telemetry to MIDI events based on a YAML profile."""
-    def __init__(self, midi_engine, profile):
+    def __init__(self, midi_engine, profile, verbose=False):
         self.midi = midi_engine
         self.profile = profile
+        self.verbose = verbose
         self.quantizer = Quantizer(profile.get('scale'))
         self.packet_count = 0
         self.last_note_time = 0
@@ -109,6 +110,9 @@ class PacketProcessor:
     def process(self, packet):
         self.packet_count += 1
         
+        if self.verbose:
+            print(f"[{self.packet_count}] {packet.summary()}")
+        
         # Rate Limiting: Avoid MIDI congestion on high-traffic networks
         current_time = time.time()
         if current_time - self.last_note_time < self.min_interval:
@@ -117,22 +121,44 @@ class PacketProcessor:
         mappings = self.profile.get('mappings', {})
         packet_size = len(packet)
 
-        # 1. Determine Note/Pitch identity
+        # 1. Calculate Payload Entropy (The "Chaos" value)
+        entropy_val = 0
+        is_high_entropy = False
+        if packet.haslayer(Raw):
+            payload = packet[Raw].load
+            entropy_val = sum(payload) % 128
+            # If entropy is high (avg byte > 120), trigger a security alert
+            if (sum(payload) / len(payload)) > 120:
+                is_high_entropy = True
+
+        # 2. Determine Note/Pitch identity
         if packet.haslayer(IP):
             src_ip = packet[IP].src
             last_octet = int(src_ip.split('.')[-1])
             base_note = self.quantizer.get_note(last_octet)
         elif packet.haslayer(Ether):
-            # Fallback for non-IP traffic: use MAC address last byte
             last_byte = int(packet[Ether].src.split(':')[-1], 16)
             base_note = self.quantizer.get_note(last_byte)
         else:
             base_note = self.quantizer.get_note(0)
 
-        # 2. Determine Layer Configuration
+        # 3. Determine Layer Configuration
         layer_cfg = None
-        if packet.haslayer(TCP):
+        
+        # High-Entropy Alert (Overrides standard mapping if defined)
+        if is_high_entropy and 'high_entropy' in mappings:
+            layer_cfg = mappings.get('high_entropy')
+        
+        # Protocol Specifics
+        elif packet.haslayer(TCP):
             layer_cfg = mappings.get('tcp')
+            # Check for specific flags (SYN/RST/FIN) if defined in profile
+            flags = str(packet[TCP].flags)
+            if 'S' in flags and 'tcp_syn' in mappings:
+                layer_cfg = mappings.get('tcp_syn')
+            elif 'R' in flags and 'tcp_rst' in mappings:
+                layer_cfg = mappings.get('tcp_rst')
+                
         elif packet.haslayer(UDP):
             layer_cfg = mappings.get('udp')
         elif packet.haslayer(ICMP):
@@ -171,7 +197,8 @@ def main():
     parser = argparse.ArgumentParser(description="Packet2Midi: Network Sonification Engine")
     parser.add_argument("-i", "--iface", default="eth0", help="Network interface to sniff")
     parser.add_argument("-p", "--profile", required=True, help="Path to YAML mapping profile")
-    parser.add_argument("-v", "--virtual", action="store_true", help="Use virtual MIDI port")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Display real-time packet summaries (tcpdump-style)")
+    parser.add_argument("-m", "--virtual", action="store_true", help="Use virtual MIDI port")
     
     args = parser.parse_args()
 
@@ -195,7 +222,7 @@ def main():
 
     # Initialize Engine
     midi = MidiEngine(virtual=args.virtual)
-    processor = PacketProcessor(midi, profile)
+    processor = PacketProcessor(midi, profile, verbose=args.verbose)
 
     print(f"[*] Starting Packet2Midi on {args.iface}...")
     print(f"[*] Loaded Profile: {profile.get('name', 'Unnamed')}")
