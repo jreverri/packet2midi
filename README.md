@@ -131,7 +131,7 @@ ssh root@172.16.42.1 'tcpdump -i wlan1 -U -w -' | python3 packet2midi.py --profi
 
 ## 🎨 Creative Intent
 
-`Packet2Midi` was born from the "Hacker Tax"—the idea of contributing creative tools back to the community. It was showcased at **DEF CON Singapore** and has been submitted for consideration at **HOPE 26** as a way to explore the aesthetic and diagnostic potential of our digital environments.
+`Packet2Midi` was born from the "Hacker Tax"—the idea of contributing creative tools back to the community and exploring the aesthetic and diagnostic potential of our digital environments.
 
 ---
 
