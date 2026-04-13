@@ -19,7 +19,7 @@ Whether you're a creative coder, a modular synth enthusiast, or a security resea
     - **ICMP Pings:** Mapped to low-frequency thuds (Kick Drums).
     - **TCP/UDP:** Differentiated voices (Leads vs. Sub-bass).
     - **Payload Entropy:** Map chaotic payload data to "Chaos" CC parameters.
-- **Remote Sensing:** Support for piped traffic from remote sensors or local USB WiFi interfaces in monitor mode (802.11).
+- **Monitor Mode Support:** Sonify "raw air" (802.11) traffic using local USB WiFi interfaces.
 
 ---
 
@@ -111,6 +111,12 @@ After running this, you can start the script normally without `sudo`:
 
 *Note: If you have applied the `setcap` permissions as described above, you do NOT need to use `sudo` for these commands.*
 
+### 🆘 Get Help
+For a full list of commands, example usage, and available profile variables:
+```bash
+python3 packet2midi.py --help
+```
+
 ### Basic Usage with a Profile
 ```bash
 python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml --virtual
@@ -120,11 +126,6 @@ python3 packet2midi.py --iface eth0 --profile profiles/industrial.yaml --virtual
 ```bash
 sudo airmon-ng start wlan1 # Still requires sudo for hardware mode change
 python3 packet2midi.py --iface wlan1mon --profile profiles/ids_alerts.yaml
-```
-
-### Remote Pipe (WiFi Pineapple)
-```bash
-ssh root@172.16.42.1 'tcpdump -i wlan1 -U -w -' | python3 packet2midi.py --profile profiles/ambient.yaml
 ```
 
 ---

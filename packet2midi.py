@@ -194,11 +194,28 @@ def validate_profile(profile):
     return True, None
 
 def main():
-    parser = argparse.ArgumentParser(description="Packet2Midi: Network Sonification Engine")
-    parser.add_argument("-i", "--iface", default="eth0", help="Network interface to sniff")
-    parser.add_argument("-p", "--profile", required=True, help="Path to YAML mapping profile")
+    parser = argparse.ArgumentParser(
+        description="Packet2Midi: Turn network telemetry into a Rhythmic Industrial Soundscape.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Example Usage:
+  python3 packet2midi.py -i eth0 -p profiles/industrial.yaml --virtual
+  python3 packet2midi.py -i wlan1mon -p profiles/ids_alerts.yaml --verbose
+
+Profile variables (defined in YAML):
+  scale: List of MIDI note integers (e.g. [36, 39, 41...])
+  settings:
+    max_mtu: Max packet size for velocity scaling (default: 1500)
+    min_interval: Min time between MIDI notes in seconds (default: 0.05)
+    note_duration: Global length of MIDI notes (default: 0.1)
+  mappings:
+    tcp, udp, icmp, tcp_syn, tcp_rst, high_entropy, default
+        """
+    )
+    parser.add_argument("-i", "--iface", default="eth0", help="Network interface to sniff (default: eth0)")
+    parser.add_argument("-p", "--profile", required=True, help="Path to the YAML mapping profile (e.g. profiles/industrial.yaml)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Display real-time packet summaries (tcpdump-style)")
-    parser.add_argument("-m", "--virtual", action="store_true", help="Use virtual MIDI port")
+    parser.add_argument("-m", "--virtual", action="store_true", help="Enable virtual MIDI output port (Packet2Midi_Out)")
     
     args = parser.parse_args()
 
