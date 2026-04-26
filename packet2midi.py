@@ -5,11 +5,14 @@ Supports dynamic YAML Mapping Profiles.
 """
 
 import argparse
+import collections
+import math
+import queue
 import sys
 import time
+import threading
 import yaml
 import os
-import threading
 from scapy.all import sniff, IP, TCP, UDP, ICMP, Raw, Ether
 import mido
 
@@ -18,6 +21,18 @@ try:
     mido.set_backend('mido.backends.rtmidi')
 except Exception as e:
     print(f"[!] Warning: Could not set mido backend to rtmidi. Using default. Error: {e}")
+
+def byte_entropy(data):
+    """Shannon entropy of a byte sequence, returns 0.0–8.0 bits."""
+    if not data:
+        return 0.0
+    counts = collections.Counter(data)
+    total = len(data)
+    return -sum((c / total) * math.log2(c / total) for c in counts.values())
+
+def entropy_to_midi(entropy):
+    """Map 0.0–8.0 bits of entropy to MIDI range 0–127."""
+    return min(127, int((entropy / 8.0) * 127))
 
 class Quantizer:
     """Forces raw 0-255 values into a specific musical scale."""
@@ -41,22 +56,25 @@ class MidiEngine:
             print(f"[!] MIDI Error: {e}")
             sys.exit(1)
 
+        # Single background thread drains the note-off queue instead of spawning
+        # one thread per note, which accumulates under high-traffic loads.
+        self._note_off_queue = queue.PriorityQueue()
+        self._worker = threading.Thread(target=self._note_off_worker, daemon=True)
+        self._worker.start()
+
+    def _note_off_worker(self):
+        while True:
+            fire_at, note = self._note_off_queue.get()
+            delay = fire_at - time.time()
+            if delay > 0:
+                time.sleep(delay)
+            self.outport.send(mido.Message('note_off', note=note, velocity=0))
+
     def send_note(self, note, velocity=64, duration=0.1):
-        """Sends a note_on message followed by a note_off after 'duration' seconds."""
-        # Ensure values are within MIDI range
         safe_note = min(127, max(0, int(note)))
         safe_velocity = min(127, max(0, int(velocity)))
-        
-        # Send Note On
-        msg_on = mido.Message('note_on', note=safe_note, velocity=safe_velocity)
-        self.outport.send(msg_on)
-        
-        # Schedule Note Off
-        def send_off():
-            msg_off = mido.Message('note_off', note=safe_note, velocity=0)
-            self.outport.send(msg_off)
-            
-        threading.Timer(duration, send_off).start()
+        self.outport.send(mido.Message('note_on', note=safe_note, velocity=safe_velocity))
+        self._note_off_queue.put((time.time() + duration, safe_note))
 
     def send_cc(self, control, value):
         msg = mido.Message('control_change', control=min(127, max(0, int(control))), value=min(127, max(0, int(value))))
@@ -76,6 +94,7 @@ class PacketProcessor:
         self.quantizer = Quantizer(profile.get('scale'))
         self.packet_count = 0
         self.last_note_time = 0
+        self._lock = threading.Lock()
         
         # Configuration settings with sensible defaults
         self.settings = profile.get('settings', {})
@@ -98,8 +117,7 @@ class PacketProcessor:
         size_val = min(127, int((len(packet) / self.max_mtu) * 127))
         entropy_val = 0
         if packet.haslayer(Raw):
-            # Very basic entropy estimation
-            entropy_val = sum(packet[Raw].load) % 128
+            entropy_val = entropy_to_midi(byte_entropy(packet[Raw].load))
 
         for cc_num, source in cc_config.items():
             if source == 'size':
@@ -115,8 +133,10 @@ class PacketProcessor:
         
         # Rate Limiting: Avoid MIDI congestion on high-traffic networks
         current_time = time.time()
-        if current_time - self.last_note_time < self.min_interval:
-            return
+        with self._lock:
+            if current_time - self.last_note_time < self.min_interval:
+                return
+            self.last_note_time = current_time
             
         mappings = self.profile.get('mappings', {})
         packet_size = len(packet)
@@ -126,10 +146,9 @@ class PacketProcessor:
         is_high_entropy = False
         if packet.haslayer(Raw):
             payload = packet[Raw].load
-            entropy_val = sum(payload) % 128
-            # If entropy is high (avg byte > 120), trigger a security alert
-            if (sum(payload) / len(payload)) > 120:
-                is_high_entropy = True
+            e = byte_entropy(payload)
+            entropy_val = entropy_to_midi(e)
+            is_high_entropy = e > 7.0  # > 7.0 bits indicates encrypted/compressed data
 
         # 2. Determine Note/Pitch identity
         if packet.haslayer(IP):
@@ -169,8 +188,6 @@ class PacketProcessor:
             layer_cfg = mappings.get('default')
 
         if layer_cfg:
-            self.last_note_time = current_time
-            
             # Handle Fixed Note (e.g. ICMP Kick)
             if 'fixed_note' in layer_cfg:
                 note = layer_cfg['fixed_note']
@@ -191,6 +208,9 @@ def validate_profile(profile):
         return False, "Profile must be a YAML dictionary."
     if 'mappings' not in profile:
         return False, "Profile missing 'mappings' section."
+    max_mtu = profile.get('settings', {}).get('max_mtu', 1500)
+    if max_mtu <= 0:
+        return False, "'max_mtu' must be greater than 0."
     return True, None
 
 def main():
@@ -201,6 +221,8 @@ def main():
 Example Usage:
   python3 packet2midi.py -i eth0 -p profiles/industrial.yaml --virtual
   python3 packet2midi.py -i wlan1mon -p profiles/ids_alerts.yaml --verbose
+  python3 packet2midi.py -P capture.pcap -p profiles/malware_detonation.yaml --virtual
+  python3 packet2midi.py -i eth0 -p profiles/ids_alerts.yaml -f "not port 22"
 
 Profile variables (defined in YAML):
   scale: List of MIDI note integers (e.g. [36, 39, 41...])
@@ -213,6 +235,8 @@ Profile variables (defined in YAML):
         """
     )
     parser.add_argument("-i", "--iface", default="eth0", help="Network interface to sniff (default: eth0)")
+    parser.add_argument("-P", "--pcap", default=None, help="Replay a PCAP file instead of live capture")
+    parser.add_argument("-f", "--filter", default=None, help="BPF filter string (e.g. 'not port 22')")
     parser.add_argument("-p", "--profile", required=True, help="Path to the YAML mapping profile (e.g. profiles/industrial.yaml)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Display real-time packet summaries (tcpdump-style)")
     parser.add_argument("-m", "--virtual", action="store_true", help="Enable virtual MIDI output port (Packet2Midi_Out)")
@@ -241,12 +265,23 @@ Profile variables (defined in YAML):
     midi = MidiEngine(virtual=args.virtual)
     processor = PacketProcessor(midi, profile, verbose=args.verbose)
 
-    print(f"[*] Starting Packet2Midi on {args.iface}...")
+    if args.pcap:
+        print(f"[*] Replaying PCAP: {args.pcap}")
+    else:
+        print(f"[*] Starting Packet2Midi on {args.iface}...")
+    if args.filter:
+        print(f"[*] BPF Filter: {args.filter}")
     print(f"[*] Loaded Profile: {profile.get('name', 'Unnamed')}")
     print("[*] Press Ctrl+C to stop.")
 
     try:
-        sniff(iface=args.iface, prn=processor.process, store=0)
+        if args.pcap:
+            if not os.path.exists(args.pcap):
+                print(f"[!] PCAP file not found: {args.pcap}")
+                sys.exit(1)
+            sniff(offline=args.pcap, prn=processor.process, store=0, filter=args.filter)
+        else:
+            sniff(iface=args.iface, prn=processor.process, store=0, filter=args.filter)
     except KeyboardInterrupt:
         midi.panic()
         print("\n[*] Shutting down. Frequency silence returned.")

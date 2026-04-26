@@ -16,7 +16,8 @@ mappings:
     fixed_velocity: 64
   icmp:
     fixed_note: 24    # Sub-Bass Warning
-    velocity: 127
+    velocity_source: "fixed"
+    fixed_velocity: 127
   default:             # Background network chatter
     note_offset: 0
     velocity_source: "fixed"
